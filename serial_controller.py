@@ -1,5 +1,6 @@
 import serial
 import time
+import threading
 
 class SerialController:
     def __init__(self, port, baudrate=115200, timeout=2.0):
@@ -7,6 +8,31 @@ class SerialController:
         self.baudrate = baudrate
         self.timeout = timeout
         self.connection = None
+        self.running = False
+        self.read_thread = None
+
+    def read_loop(self):
+        buffer = b""
+        while self.running and self.connection and self.connection.is_open:
+            try:
+                if self.connection.in_waiting > 0:
+                    buffer += self.connection.read(self.connection.in_waiting)
+
+                    while b'\n' in buffer:
+                        line, buffer = buffer.split(b'\n', 1)
+                        try:
+                            decoded_line = line.decode("utf-8").strip()
+                            if decoded_line:
+                                print(f"Received: {decoded_line}")
+                        except UnicodeDecodeError:
+                            print(f"Received (raw bytes): {line}")
+                else:
+                    time.sleep(0.01)
+            except OSError:
+                break
+            except Exception as e:
+                print(f"Unexpected read error: {e}")
+                break
 
     def connect(self):
         try:
@@ -15,11 +41,21 @@ class SerialController:
             )
             time.sleep(2)
             print(f"Successfully connected to {self.port} at {self.baudrate} baud.")
+            
+            self.running = True
+            self.read_thread = threading.Thread(target=self.read_loop, daemon=True)
+            self.read_thread.start()
+            
         except serial.SerialException as e:
             print(f"Error: Failed to connect to {self.port}. Exception: {e}")
             raise
 
+
     def disconnect(self):
+        self.running = False
+        if self.read_thread and self.read_thread.is_alive():
+            self.read_thread.join(timeout=1.0)
+
         if self.connection and self.connection.is_open:
             self.set_speed(0)
             self.set_steer(0)
@@ -68,7 +104,7 @@ class SerialController:
 
 
 if __name__ == "__main__":
-    PORT = "/dev/cu.usbmodem1303"  # Update this to your actual serial port, e.g.,
+    PORT = "/dev/ttyACM0"  # Update this to your actual serial port, e.g.,
 
     controller = SerialController(port=PORT)
     try:
