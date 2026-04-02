@@ -1,5 +1,2 @@
 .DS_Store
-dataset_testing/
-dataset_training/
-labels_testing.csv
-labels_training.csv
+data/
