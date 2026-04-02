@@ -1,120 +1,82 @@
-#Script che ho utilizzato per generare il mio dataset con le immagini 
-# e con i corrispettivi label
 import cv2
 import numpy as np
-import pandas as pd
-import os
+import math
 import random
 
-IMG_SIZE = 128      # Dimensione immagine 
-#IMAGES_PER_TYPE = 5000  # numero di immagini per ogni tipologia -> in tutto 20000 immagini
-#OUTPUT_DIR = "dataset_training"  #contiene le immagini per il mio allenamento 
-#LABEL_FILE = "labels_training.csv" #contiene i label corrispondenti alle immagini che ho generato 
-IMAGES_PER_TYPE = 10 # Usate per il testing
-OUTPUT_DIR = "dataset_testing" 
-LABEL_FILE = "labels_testing.csv"
-
-# Crea la cartella se non esiste
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
-
-# Lista per memorizzare i dati (NomeFile, Steering, Speed) effettivi
-dataset_labels = []
-
-print(f"Inizio generazione di {IMAGES_PER_TYPE * 4} immagini:")
-
-# funzione per disegnare 
-def draw_lines(img, angle_deg, thickness, is_horizontal=False):
-    """Disegna due linee bianche con angolo e spessore dati."""
-    color = (255, 255, 255) # Bianco puro
-    center_x, center_y = IMG_SIZE // 2, IMG_SIZE // 2
+def generate_colors(n, is_test=False):
+    reserved_radius= 40.0
+    colors = []
     
-    if is_horizontal:
-        #STOP : due linee orizzontali parallele
-        offset = 15
-        cv2.line(img, (20, center_y - offset), (IMG_SIZE - 20, center_y - offset), color, thickness)
-        cv2.line(img, (20, center_y + offset), (IMG_SIZE - 20, center_y + offset), color, thickness)
-    else:
-        # Caso standard: linee verticali o inclinate
-        length = 90
-        dist_tra_linee = 35
+    center = (127.5, 127.5, 127.5)
+    black = (0, 0, 0)
+    white = (255, 255, 255)
+    
+    boundary_radius = 156.0 
+    
+    while len(colors) < n:
+        r = random.randint(0, 255)
+        g = random.randint(0, 255)
+        b = random.randint(0, 255)
         
-        # Calcolo coordinate basato sulla trigonometria
-        rad = np.deg2rad(angle_deg)
-        dx = int(length * np.sin(rad))
-        dy = int(length * np.cos(rad))
+        dist_to_black = math.sqrt((r - black[0])**2 + (g - black[1])**2 + (b - black[2])**2)
+        dist_to_white = math.sqrt((r - white[0])**2 + (g - white[1])**2 + (b - white[2])**2)
         
-        # Linea 1 (Sinistra)
-        x1, y1 = (center_x - dist_tra_linee) + dx, center_y - dy
-        x2, y2 = (center_x - dist_tra_linee) - dx, center_y + dy
-        cv2.line(img, (x1, y1), (x2, y2), color, thickness)
+        if dist_to_black < reserved_radius or dist_to_white < reserved_radius:
+            continue
+            
+        dist_to_center = math.sqrt((r - center[0])**2 + (g - center[1])**2 + (b - center[2])**2)
         
-        # Linea 2 (Destra)
-        x3, y3 = (center_x + dist_tra_linee) + dx, center_y - dy
-        x4, y4 = (center_x + dist_tra_linee) - dx, center_y + dy
-        cv2.line(img, (x3, y3), (x4, y4), color, thickness)
-
-# Definizione dei tipi
-types = [
-    {'name': 'DRITTO', 'angle_base': 0, 'horiz': False},
-    {'name': 'SINISTRA', 'angle_base': -35, 'horiz': False}, # Inclinazione sinistra
-    {'name': 'DESTRA', 'angle_base': 35, 'horiz': False},   # Inclinazione destra
-    {'name': 'STOP', 'angle_base': 0, 'horiz': True}        # Orizzontale
-]
-
-img_id = 0 
-
-for t in types:
-    print(f"Generazione tipo: {t['name']}")
-    for i in range(IMAGES_PER_TYPE):
-        
-        # Crea sfondo colorato casuale che ho utilizzato per fare data augmentation
-        bg_color = [random.randint(10, 220), random.randint(10, 220), random.randint(10, 220)]
-        img = np.full((IMG_SIZE, IMG_SIZE, 3), bg_color, dtype=np.uint8)
-        
-        # Spessore (Mappato alla Velocità)
-        thickness = random.randint(2, 14) # spessore tra 2px e 14px
-        
-        # Il valore target della velocità  è normalizzato tra 0.1 e 1.0
-        # 0.1 come minimo invece di 0 per non far confondere il modello con lo STOP
-        speed_target = np.interp(thickness, [2, 14], [0.1, 1.0])
-        
-        # Inclinazione (Mappato allo Steering)
-        if t['horiz']:
-            # Caso STOP
-            angle_final = 0
-            steering_target = 0.0
-            speed_target = 0.0 # per lo stop ho deciso di settare la velocità a 0.0
+        if is_test:
+            if dist_to_center > boundary_radius:
+                colors.append((r, g, b))
         else:
-            # Caso in cui ci deve essere un movimento
-            #aggiungiamo una variazione casuale del nostro angolo per aggiungere rumore
-            variation = random.uniform(-20.0, 20.0) 
-            angle_final = t['angle_base'] + variation
-            #normalizziamo il nostro steering a:
-            #-45 -> -1 SX
-            #+45 -> +1 DX
-            steering_target = np.interp(angle_final, [-45, 45], [-1.0, 1.0])
-        
-        # Disegno effettivo delle mie linee
-        draw_lines(img, angle_final, thickness, is_horizontal=t['horiz'])
-        
-        # salvataggio dei file come: TIPO_ID_VEL_STEER.png 
-        # ho sostituito i "." con p per evitare possibili problemi con i nomi dei file 
-        vel = str(round(speed_target, 2)).replace('.', 'p')
-        ste = str(round(steering_target, 2)).replace('.', 'p')
-        img_name = f"{t['name']}_{img_id}_v{vel}_s{ste}.png"
-        
-        cv2.imwrite(os.path.join(OUTPUT_DIR, img_name), img) # salvo l'img nella mia dir
-        
-        
-        # salvo i valori effettivi nella mia lista -> nome_img, steering, speed , className
-        dataset_labels.append([img_name, steering_target, speed_target, t['name']])
-        img_id += 1
+            if dist_to_center <= boundary_radius:
+                colors.append((r, g, b))
+                
+    return colors
 
-#salvo nel mio csv
-df = pd.DataFrame(dataset_labels, columns=['file_name', 'steering_target', 'speed_target', 'type_label'])
-df.to_csv(LABEL_FILE, index=False)
+def generate_image(angle_deg, thickness, bg_color, img_size=128, line_length = 90, line_spacing = 35):
+    """Disegna due linee parallele sull'immagine fornita, ruotate di un angolo specifico."""
 
-print(f"\nHo completato la generazione delle mie immagini")
-print(f"Sono state generate {len(dataset_labels)} immagini in '{OUTPUT_DIR}'")
-print(f"Il file con i miei label originali è stato salvato in '{LABEL_FILE}'")
+    # 1. Definiamo i punti per due linee VERTICALI di base
+    center_x, center_y = img_size // 2, img_size // 2
+
+    # Punti per la linea di sinistra (prima della rotazione)
+    p1_base = (center_x - line_spacing, center_y - line_length/2)
+    p2_base = (center_x - line_spacing, center_y + line_length/2)
+
+    # Punti per la linea di destra (prima della rotazione)
+    p3_base = (center_x + line_spacing, center_y - line_length/2)
+    p4_base = (center_x + line_spacing, center_y + line_length/2)
+
+    points = [p1_base, p2_base, p3_base, p4_base]
+    rotated_points = []
+
+    # 2. Applichiamo la formula di rotazione 2D a tutti e 4 i punti
+    # Converti l'angolo in radianti per le funzioni trigonometriche
+    rad = np.deg2rad(angle_deg)
+    sin_a = np.sin(rad)
+    cos_a = np.cos(rad)
+
+    for p_base in points:
+        # Sposta il punto all'origine per la rotazione
+        px, py = p_base[0] - center_x, p_base[1] - center_y
+        
+        # Applica la matrice di rotazione 2D
+        rotated_x = px * cos_a - py * sin_a
+        rotated_y = px * sin_a + py * cos_a
+        
+        # Riporta il punto alla sua posizione originale
+        final_x = int(rotated_x + center_x)
+        final_y = int(rotated_y + center_y)
+        
+        rotated_points.append((final_x, final_y))
+
+    # 3. Disegna le due linee usando i punti ruotati
+    img = np.zeros((img_size, img_size, 3), dtype=np.uint8) # Immagine nera di base
+    img[:] = bg_color # Imposta il colore di sfondo
+    white = (255, 255, 255) # Bianco puro
+    cv2.line(img, rotated_points[0], rotated_points[1], white, thickness)
+    cv2.line(img, rotated_points[2], rotated_points[3], white, thickness)
+
+    return img
