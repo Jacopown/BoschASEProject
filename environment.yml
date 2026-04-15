@@ -1,4 +1,4 @@
-name: ASE
+name: bosch-ase-env
 channels:
   - conda-forge
 dependencies:

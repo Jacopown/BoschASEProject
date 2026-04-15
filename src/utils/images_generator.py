@@ -1,9 +1,34 @@
+"""
+This module provides functions for generating and manipulating images for the dataset.
+
+It includes capabilities to:
+- Generate random background colors, ensuring a distinction between training and test sets.
+- Create a base image with two parallel white lines at a specified angle and thickness.
+- Add random "salt-and-pepper" noise to an image.
+- Superimpose a black stripe onto an image to simulate occlusions.
+"""
 import cv2
 import numpy as np
 import math
 import random
+from typing import List, Tuple
 
-def generate_colors(n, is_test=False):
+def generate_colors(n: int, is_test: bool = False) -> List[Tuple[int, int, int]]:
+    """
+    Generates a list of N random RGB colors, avoiding pure black and white.
+
+    The color generation strategy depends on the `is_test` flag to ensure that
+    the test dataset uses a different color distribution from the training set.
+    Colors are sampled based on their distance from the center of the RGB cube.
+
+    Args:
+        n (int): The number of colors to generate.
+        is_test (bool): If True, generates colors from an outer shell of the RGB color
+                        space. If False, generates colors from an inner core.
+
+    Returns:
+        list: A list of N tuples, where each tuple represents an (R, G, B) color.
+    """
     reserved_radius= 40.0
     colors = []
     
@@ -35,8 +60,21 @@ def generate_colors(n, is_test=False):
                 
     return colors
 
-def generate_image(angle_deg, thickness, bg_color, img_size=128, line_length = 90, line_spacing = 35):
+def generate_image(angle_deg: float, thickness: int, bg_color: Tuple[int, int, int], img_size: int = 128, line_length: int = 90, line_spacing: int = 35) -> np.ndarray:
+    """
+    Generates an image containing two parallel white lines rotated at a specific angle.
 
+    Args:
+        angle_deg (float): The rotation angle of the lines in degrees.
+        thickness (int): The thickness of the lines in pixels.
+        bg_color (tuple): The (R, G, B) background color of the image.
+        img_size (int): The height and width of the square image.
+        line_length (int): The length of the lines in pixels.
+        line_spacing (int): The perpendicular distance between the two lines.
+
+    Returns:
+        numpy.ndarray: The generated image as a NumPy array.
+    """
     center_x, center_y = img_size // 2, img_size // 2
 
     p1_base = (center_x - line_spacing, center_y - line_length/2)
@@ -71,7 +109,20 @@ def generate_image(angle_deg, thickness, bg_color, img_size=128, line_length = 9
 
     return img
 
-def add_noise(image, noise_percentage):
+def add_noise(image: np.ndarray, noise_percentage: float) -> np.ndarray:
+    """
+    Adds noise to an image by setting random pixels to black.
+
+    Args:
+        image (numpy.ndarray): The input image.
+        noise_percentage (float): The percentage of pixels to turn into noise (0-100).
+
+    Returns:
+        numpy.ndarray: The image with added noise.
+    
+    Raises:
+        ValueError: If `noise_percentage` is not between 0 and 100.
+    """
     if not (0 <= noise_percentage <= 100):
         raise ValueError("La percentuale di rumore deve essere compresa tra 0 e 100.")
 
@@ -87,7 +138,22 @@ def add_noise(image, noise_percentage):
 
     return noisy_image
 
-def add_black_stripe(image, width, angle_deg, position_xy):
+def add_black_stripe(image: np.ndarray, width: int, angle_deg: float, position_xy: Tuple[int, int]) -> np.ndarray:
+    """
+    Adds a black stripe (line) over an image to simulate occlusion.
+
+    Args:
+        image (numpy.ndarray): The input image.
+        width (int): The width (thickness) of the stripe in pixels.
+        angle_deg (float): The angle of the stripe in degrees.
+        position_xy (tuple): An (x, y) tuple defining a point that the stripe will pass through.
+
+    Returns:
+        numpy.ndarray: The image with the black stripe.
+        
+    Raises:
+        ValueError: If the `position_xy` is outside the image bounds.
+    """
     striped_image = np.copy(image)
     h, w, _ = striped_image.shape
     black = (0, 0, 0)
