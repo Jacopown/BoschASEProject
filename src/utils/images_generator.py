@@ -36,47 +36,74 @@ def generate_colors(n, is_test=False):
     return colors
 
 def generate_image(angle_deg, thickness, bg_color, img_size=128, line_length = 90, line_spacing = 35):
-    """Disegna due linee parallele sull'immagine fornita, ruotate di un angolo specifico."""
 
-    # 1. Definiamo i punti per due linee VERTICALI di base
     center_x, center_y = img_size // 2, img_size // 2
 
-    # Punti per la linea di sinistra (prima della rotazione)
     p1_base = (center_x - line_spacing, center_y - line_length/2)
     p2_base = (center_x - line_spacing, center_y + line_length/2)
 
-    # Punti per la linea di destra (prima della rotazione)
     p3_base = (center_x + line_spacing, center_y - line_length/2)
     p4_base = (center_x + line_spacing, center_y + line_length/2)
 
     points = [p1_base, p2_base, p3_base, p4_base]
     rotated_points = []
 
-    # 2. Applichiamo la formula di rotazione 2D a tutti e 4 i punti
-    # Converti l'angolo in radianti per le funzioni trigonometriche
     rad = np.deg2rad(angle_deg)
     sin_a = np.sin(rad)
     cos_a = np.cos(rad)
 
     for p_base in points:
-        # Sposta il punto all'origine per la rotazione
         px, py = p_base[0] - center_x, p_base[1] - center_y
         
-        # Applica la matrice di rotazione 2D
         rotated_x = px * cos_a - py * sin_a
         rotated_y = px * sin_a + py * cos_a
         
-        # Riporta il punto alla sua posizione originale
         final_x = int(rotated_x + center_x)
         final_y = int(rotated_y + center_y)
         
         rotated_points.append((final_x, final_y))
 
-    # 3. Disegna le due linee usando i punti ruotati
-    img = np.zeros((img_size, img_size, 3), dtype=np.uint8) # Immagine nera di base
-    img[:] = bg_color # Imposta il colore di sfondo
-    white = (255, 255, 255) # Bianco puro
+    img = np.zeros((img_size, img_size, 3), dtype=np.uint8)
+    img[:] = bg_color
+    white = (255, 255, 255)
     cv2.line(img, rotated_points[0], rotated_points[1], white, thickness)
     cv2.line(img, rotated_points[2], rotated_points[3], white, thickness)
 
     return img
+
+def add_noise(image, noise_percentage):
+    if not (0 <= noise_percentage <= 100):
+        raise ValueError("La percentuale di rumore deve essere compresa tra 0 e 100.")
+
+    noisy_image = np.copy(image)
+    h, w, _ = noisy_image.shape
+    num_pixels = h * w
+    num_noisy_pixels = int(num_pixels * (noise_percentage / 100.0))
+
+    y_coords = np.random.randint(0, h, num_noisy_pixels)
+    x_coords = np.random.randint(0, w, num_noisy_pixels)
+
+    noisy_image[y_coords, x_coords] = (0, 0, 0)
+
+    return noisy_image
+
+def add_black_stripe(image, width, angle_deg, position_xy):
+    striped_image = np.copy(image)
+    h, w, _ = striped_image.shape
+    black = (0, 0, 0)
+
+    x, y = position_xy
+    if not (0 <= x < w and 0 <= y < h):
+        raise ValueError(f"La posizione (x, y) deve essere all'interno delle dimensioni dell'immagine ({w}x{h}).")
+
+    angle_rad = np.deg2rad(angle_deg)
+
+    length = int(max(h, w) * 1.5)
+    p1_x = int(x - length * np.cos(angle_rad))
+    p1_y = int(y - length * np.sin(angle_rad))
+    p2_x = int(x + length * np.cos(angle_rad))
+    p2_y = int(y + length * np.sin(angle_rad))
+
+    cv2.line(striped_image, (p1_x, p1_y), (p2_x, p2_y), black, width)
+
+    return striped_image
