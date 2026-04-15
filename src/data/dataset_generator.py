@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--dataset_size', type=int, required=True,
                         help='Total number of images to generate.')
     parser.add_argument('-o', '--output_dir', type=str, required=True,
-                        help='Directory to save the dataset. Defaults to data/ folder')
+                        help='Directory to save the dataset. Defaults to dataset/ folder')
     parser.add_argument('-t', '--is_test', action='store_true',
                         help='Flag to indicate if this is for testing.')
     args = parser.parse_args()
