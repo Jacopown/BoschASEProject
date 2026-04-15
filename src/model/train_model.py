@@ -7,8 +7,8 @@ from tensorflow.keras import layers, models, Input
 from sklearn.model_selection import train_test_split
 
 IMG_SIZE = 128
-CSV_PATH = "labels_training.csv"
-IMG_DIR = "dataset_training"
+CSV_PATH = "src/data/dataset_training/labels.csv"
+IMG_DIR = "src/data/dataset_training"
 
 #funzione che carica i miei file 
 def load_dataset(csv_path, img_dir):
@@ -89,7 +89,7 @@ if X is not None and len(X) > 0:
     )
 
     #salvo il mio modello 
-    model.save("modello_bosch.h5")
+    model.save("models/modello_bosch.h5")
     print("\nIl modello è stato creato e salvato con successo!")
 else:
     print("Errore: Dataset non caricato. Controlla i percorsi delle immagini.")

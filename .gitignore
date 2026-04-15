@@ -1,3 +1,5 @@
 .DS_Store
 dataset/
 __pycache__/
+src/data/dataset_training/
+src/data/dataset_testing/

@@ -3,8 +3,8 @@ import numpy as np
 import cv2
 import os
 
-MODEL_PATH = "modello_bosch.h5"  # Il mio modello 
-TEST_DIR = "dataset_testing"           # la mia cartella con il testing
+MODEL_PATH = "models/modello_bosch.h5"  # Il mio modello 
+TEST_DIR = "src/data/dataset_testing"           # la mia cartella con il testing
 
 #carico il modello 
 if not os.path.exists(MODEL_PATH):
