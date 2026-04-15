@@ -1,0 +1,11 @@
+name: ASE
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - opencv
+  - pandas
+  - pyserial
+  - python=3.12
+  - scikit-learn
+  - tensorflow
