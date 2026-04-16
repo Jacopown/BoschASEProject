@@ -178,7 +178,19 @@ class SerialController:
             return False
         return True
 
+    def set_brake(self, steer: int = 0) -> None:
+        """
+        Sets the vehicle in brake state while allowing to set the steering.
 
+        Args:
+            steer (int): The steering angle in degrees to maintain during braking.
+                        Range: (-23, +23). Default is 0 (straight).
+        """
+        if not self.is_connected():
+            return 
+        
+        command = f"#brake:{steer};;\r\n"
+        self.send_command(command)
 
 if __name__ == "__main__":
     PORT = "/dev/ttyACM0"  # Update this to your actual serial port, e.g.,
