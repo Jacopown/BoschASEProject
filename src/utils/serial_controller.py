@@ -138,6 +138,14 @@ class SerialController:
         command = f"#kl:30;;\r\n"
         self.send_command(command)
 
+    def set_power_state_off(self) -> None:
+        """Sends the command to turn the device's power off."""
+        if not self.is_connected():
+            return
+
+        command = f"#kl:0;;\r\n"
+        self.send_command(command)
+
     def set_speed(self, speed: float) -> None:
         """
         Sends a command to set the device's speed.
