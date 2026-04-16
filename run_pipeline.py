@@ -91,6 +91,8 @@ def main():
                         help="Seconds to wait between steps.")
     parser.add_argument("--model-path", type=str, default="models/modello_bosch.tflite",
                         help="Path to the TFLite model.")
+    parser.add_argument("--no-serial", action="store_true",
+                        help="Skip serial communication (for testing on a machine without the car).")
     args = parser.parse_args()
 
     # Prepare output directories
@@ -107,9 +109,13 @@ def main():
     output_details = interpreter.get_output_details()
     print("Modello caricato con successo.")
 
-    # Setup serial
-    print(f"Inizializzazione connessione seriale su {args.port}...")
-    controller = SerialController(port=args.port)
+    # Setup serial (only if not disabled)
+    controller = None
+    if not args.no_serial:
+        print(f"Inizializzazione connessione seriale su {args.port}...")
+        controller = SerialController(port=args.port)
+    else:
+        print("Modalità --no-serial attiva: nessun comando verrà inviato al veicolo.")
 
     # CSV setup
     csv_file = open(csv_path, "w", newline="")
@@ -124,9 +130,10 @@ def main():
     ])
 
     try:
-        controller.connect()
-        controller.set_power_state_on()
-        time.sleep(1)
+        if controller is not None:
+            controller.connect()
+            controller.set_power_state_on()
+            time.sleep(1)
 
         for step_idx, (label, angle_deg, thickness) in enumerate(EASY_PATH, start=1):
             print(f"\n--- Step {step_idx}/{len(EASY_PATH)}: {label} "
@@ -178,17 +185,22 @@ def main():
             print(f"Expected:  steer={exp_steer:+.4f}, speed={exp_speed:+.4f}")
             print(f"Error:     steer={steer_err:+.4f}, speed={speed_err:+.4f}")
 
-            # Send commands to the car
-            controller_steer = int(steer * 55) 
+            # Send commands to the car (if serial enabled)
+            controller_steer = int(steer * 55)
             if label.startswith("STOP"):
-                # Brake: steering 0, range (-23, +23)
-                controller.set_brake(0)
                 controller_speed = 0
-                print("STOP step: freni attivati.")
+                if controller is not None:
+                    controller.set_brake(0)
+                    print("STOP step: freni attivati.")
+                else:
+                    print("STOP step: (no-serial) would call set_brake(0).")
             else:
                 controller_speed = int(speed * 500)
-                controller.set_speed(controller_speed)
-                controller.set_steer(controller_steer)
+                if controller is not None:
+                    controller.set_speed(controller_speed)
+                    controller.set_steer(controller_steer)
+                else:
+                    print(f"(no-serial) would send speed={controller_speed}, steer={controller_steer}.")
 
             # Write CSV row
             writer.writerow([
@@ -210,7 +222,7 @@ def main():
     finally:
         print("\nChiusura connessione e spegnimento motori...")
         try:
-            if controller.is_connected():
+            if controller is not None and controller.is_connected():
                 controller.set_speed(0)
                 controller.set_steer(0)
                 controller.disconnect()
@@ -219,7 +231,6 @@ def main():
         csv_file.close()
         print(f"Risultati salvati in: {csv_path}")
         print(f"Immagini salvate in:  {img_dir}")
-
 
 if __name__ == "__main__":
     main()
