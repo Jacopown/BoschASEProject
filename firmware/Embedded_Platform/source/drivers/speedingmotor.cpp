@@ -65,14 +65,14 @@ namespace drivers{
 
         if (f_speed > 0) {
             // Marcia in AVANTI
-            m_ina_pin = 1;
-            m_inb_pin = 0;
+            m_ina_pin = 0;
+            m_inb_pin = 1;
             duty_cycle = (float)f_speed / (float)m_sup_limit;
         } 
         else if (f_speed < 0) {
             // Marcia INDIETRO
-            m_ina_pin = 0;
-            m_inb_pin = 1;
+            m_ina_pin = 1;
+            m_inb_pin = 0;
             duty_cycle = (float)(-f_speed) / (float)(-m_inf_limit);
         } 
         else {
