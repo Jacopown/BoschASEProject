@@ -19,6 +19,9 @@ This project implements a deep learning pipeline to control a robotic vehicle, e
 /
 ├── environment.yml         # Conda environment with all dependencies
 ├── run_pipeline.py         # Main script to run the inference pipeline (supports clean/dirty modes)
+├── firmware/               # Low-level control firmware for Nucleo board
+│   ├── environment.yml     # Firmware development environment
+│   └── Embedded_Platform/  # Mbed-os project source and build files
 ├── models/
 │   ├── modello_bosch.h5    # Trained TensorFlow/Keras model
 │   └── modello_bosch.tflite # Converted TensorFlow Lite model
@@ -51,6 +54,11 @@ This project implements a deep learning pipeline to control a robotic vehicle, e
     ```
 
 ## Firmware Setup and Build
+
+### Prerequisites
+Before building the firmware, ensure you have the following installed on your system:
+- **CMake**: Required for the build system.
+- **GNU Arm Embedded Toolchain**: A cross-compiler to build the project for the Nucleo-F401RE. You can download it from [Arm Developer](https://developer.arm.com/downloads/-/gnu-rm).
 
 ### Environment Creation
 To create the necessary development environment for the firmware, use the `environment.yml` file located in the `firmware/` directory:
