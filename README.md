@@ -50,6 +50,35 @@ This project implements a deep learning pipeline to control a robotic vehicle, e
     conda activate bosch-ase-env
     ```
 
+## Firmware Setup and Build
+
+### Environment Creation
+To create the necessary development environment for the firmware, use the `environment.yml` file located in the `firmware/` directory:
+```bash
+conda env create -f firmware/environment.yml
+conda activate embedded-platform
+```
+
+### Pre-compiled Binary
+The project ships with a pre-compiled binary file ready to be flashed to the Nucleo board:
+`firmware/Embedded_Platform/cmake_build/NUCLEO_F401RE/develop/GCC_ARM/robot_car.bin`
+
+### Rebuilding from Source
+In case of changes to the firmware source code, you can clean and rebuild the binary using `mbed-tools` from the `firmware/Embedded_Platform/` directory:
+
+1. **Deploy libraries**:
+   ```bash
+   mbed-tools deploy
+   ```
+2. **Configure the project**:
+   ```bash
+   mbed-tools configure -m NUCLEO_F401RE -t GCC_ARM
+   ```
+3. **Compile the binary**:
+   ```bash
+   mbed-tools compile -m NUCLEO_F401RE -t GCC_ARM
+   ```
+
 ## Usage Guide
 
 ### 1. Generate the Dataset
