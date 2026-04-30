@@ -1,6 +1,8 @@
 """
-This is the pipeline that has to be run on the Pi and the Idea is to define a "clean" path and to see how the model behaves in that situation.
-After this peocede with making the images "dirty" and checking again the effect of that "dirt" on the model interpretations.
+This is the pipeline that has to be run on the Pi. It drives the car along
+one of the predefined paths in src/evaluation/paths.py (selected via --path)
+and records how the model behaves both in "clean" mode and in "dirty" mode
+(with fault injection on the input images).
 """
 import os
 import time
@@ -12,19 +14,7 @@ import tensorflow as tf
 
 from src.utils.serial_controller import SerialController
 from src.utils.images_generator import generate_image, generate_colors,add_noise,add_black_stripe
-
-#I define my path for testing 
-# Format: (label, angle_deg, thickness, duration_sec)
-EASY_PATH = [
-    ("DRITTO_1",          0,   10,   4),
-    ("DESTRA_slight",    20,   10,   4),
-    ("DRITTO_2",          0,   10,   5),
-    ("SINISTRA_slight", -20,   10,   4),
-    ("DRITTO_3",          0,   10,   5),
-    ("DESTRA_sharp",     45,   10,   3),
-    ("SINISTRA_sharp",  -45,   10,   3),
-    ("STOP",            -90,   10,   4),
-]
+from src.evaluation.paths import get_path, list_paths
 
 def compute_expected(angle_deg, thickness):
     """Replicate the mapping from dataset_generator.py"""
@@ -76,6 +66,9 @@ def main():
     parser = argparse.ArgumentParser(description="Run easy path on the Bosch car.")
     parser.add_argument("--mode", choices=["clean", "dirty"], required=True,
                         help="Run with clean images or with fault-injected images.")
+    parser.add_argument("--path", choices=list_paths(), default="PATH1",
+                        help="Which test path to drive (see src/evaluation/paths.py). "
+                             "Default: PATH1.")
     parser.add_argument("--fault", choices=["noise", "stripe", "both"], default="noise",
                         help="Fault type (only used in dirty mode).")
     parser.add_argument("--noise-pct", type=float, default=10.0,
@@ -85,7 +78,10 @@ def main():
     parser.add_argument("--stripe-angle", type=float, default=45.0,
                         help="Angle in degrees of the occlusion stripe.")
     parser.add_argument("--output-dir", type=str, default="results",
-                        help="Directory where CSV and images will be saved.")
+                        help="Directory where CSV and images will be saved. "
+                             "Used literally (no automatic subfolders). "
+                             "Tip: organize manually like "
+                             "results/PATH1/dirty/noise10pct.")
     parser.add_argument("--port", type=str, default="/dev/ttyACM0",
                         help="Serial port of the car.")
     parser.add_argument("--fps", type=int, default=10,
@@ -96,11 +92,18 @@ def main():
                         help="Skip serial communication (for testing on a machine without the car).")
     args = parser.parse_args()
 
-    # Prepare output directories
-    run_dir = os.path.join(args.output_dir, args.mode)
+    # Resolve the chosen path
+    selected_path = get_path(args.path)
+
+    # Output directory is used LITERALLY: whatever you pass with --output-dir
+    # is exactly where CSV and images will land. No automatic subfolders.
+    # This lets you organize runs however you like, e.g.:
+    #   --output-dir results/PATH1/clean
+    #   --output-dir results/PATH1/dirty/noise10pct
+    run_dir = args.output_dir
     img_dir = os.path.join(run_dir, "images")
     os.makedirs(img_dir, exist_ok=True)
-    csv_path = os.path.join(run_dir, f"{args.mode}_run.csv")
+    csv_path = os.path.join(run_dir, f"{args.path}_{args.mode}_run.csv")
 
     # Load TFLite model
     print(f"Caricamento modello TFLite da {args.model_path}...")
@@ -122,7 +125,7 @@ def main():
     csv_file = open(csv_path, "w", newline="")
     writer = csv.writer(csv_file)
     writer.writerow([
-        "step", "frame", "label", "mode", "angle_deg", "thickness",
+        "path_name", "step", "frame", "label", "mode", "angle_deg", "thickness",
         "expected_steer", "expected_speed",
         "predicted_steer", "predicted_speed",
         "steer_error", "speed_error",
@@ -136,8 +139,8 @@ def main():
             controller.set_power_state_on()
             time.sleep(1)
 
-        for step_idx, (label, angle_deg, thickness, duration) in enumerate(EASY_PATH, start=1):
-            print(f"\n--- Step {step_idx}/{len(EASY_PATH)}: {label} "
+        for step_idx, (label, angle_deg, thickness, duration) in enumerate(selected_path, start=1):
+            print(f"\n--- {args.path} Step {step_idx}/{len(selected_path)}: {label} "
                   f"(angle={angle_deg}, thickness={thickness}, duration={duration}s) ---")
 
             num_frames = int(duration * args.fps)
@@ -206,6 +209,7 @@ def main():
 
                 # Write CSV row
                 writer.writerow([
+                    args.path,
                     step_idx, frame_idx, label, args.mode, angle_deg, thickness,
                     f"{exp_steer:.4f}", f"{exp_speed:.4f}",
                     f"{steer:.4f}", f"{speed:.4f}",
